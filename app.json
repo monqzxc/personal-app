@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Daywell",
+    "slug": "personal-life-dashboard",
+    "scheme": "daywell",
+    "version": "0.2.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-notifications",
+      ["expo-calendar", { "calendarPermission": "Allow Daywell to import events from calendars you choose." }]
+    ],
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
