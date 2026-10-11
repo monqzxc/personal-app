@@ -4,6 +4,7 @@ import type { LifeRepository } from '../repositories/lifeRepository.ts';
 import { ensure, validateModule } from './validation.ts';
 import { newEntity } from './entity.ts';
 import { modules } from '../features/library/catalog.ts';
+import { dateOnly } from '../utils/dates.ts';
 
 export class LifeService {
   private repository: LifeRepository;
@@ -26,10 +27,35 @@ export class LifeService {
       }
     }
     if (key === 'goals') values.progress = Math.min(100, Math.max(0, Number(values.currentValue) / Number(values.targetValue) * 100));
+    if (key === 'transactions' && existing) {
+      for (const field of ['billId', 'subscriptionId', 'expectedIncomeId'] as const) {
+        ensure(values[field] === (existing as unknown as Record<string, unknown>)[field], 'Payment and receipt links cannot be changed.');
+      }
+    }
+    if (key === 'expectedIncome') {
+      const received = existing && 'status' in existing && existing.status === 'received';
+      ensure(received || values.status !== 'received', 'Use Mark received to create the actual income transaction.');
+      ensure(!received || values.status === 'received', 'Received income cannot be reopened. Correct its transaction instead.');
+    }
+    if (key === 'bills' && existing && 'status' in existing && existing.status === 'paid') ensure(values.status === 'paid', 'A paid bill cannot be reopened. Correct its expense transaction instead.');
     const record = { ...(existing ?? newEntity(this.uuid())), ...values };
+    if (key === 'activities') {
+      if (existing && 'source' in existing && existing.source === 'gps') {
+        ensure(existing.status === 'completed', 'Finish this workout before editing it.');
+        for (const field of ['source', 'status', 'elapsedMs', 'resumedAt', 'segment', 'route', 'durationMinutes', 'distanceKm', 'trackingError', 'backgroundEnabled']) values[field] = (existing as unknown as Record<string, unknown>)[field];
+        Object.assign(record, values);
+      } else ensure(values.source === 'manual', 'Start GPS activities from Fitness.');
+    }
     validateModule(key, record);
+    if (key === 'debts' || key === 'repayments') ensure(String(values.date) <= dateOnly(), 'Record lending, borrowing, and repayments only after they happen. Choose today or an earlier date.');
     if (!id) return repository.create(record, inboxId);
     return repository.update(id, values as EntityPatch<ModuleRecord<K>>);
   }
-  delete(key: ModuleKey, id: string) { return this.repository.collection(key).delete(id); }
+  async delete(key: ModuleKey, id: string) {
+    if (key === 'activities') {
+      const activity = await this.repository.collection('activities').getById(id);
+      ensure(!activity || activity.status === 'completed', 'Finish the active workout before deleting it.');
+    }
+    return this.repository.collection(key).delete(id);
+  }
 }

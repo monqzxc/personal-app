@@ -9,6 +9,7 @@ import { dateOnly, isDateOnly } from '../../utils/dates';
 import { Button, Card, Chips, Field, Label, layout } from '../common/ui';
 import { useTheme } from '../../theme/useTheme';
 import { DateField } from './DateField';
+import { PeopleField } from './PeopleField';
 
 export function ReminderField({ value, onChange }: { value: Reminder | null; onChange: (value: Reminder | null) => void }) {
   const date = value && Number.isFinite(Date.parse(value.at)) ? new Date(value.at) : null;
@@ -25,20 +26,22 @@ export function RelationField({ field, value, onChange }: { field: FieldDefiniti
   const [search, setSearch] = useState('');
   const collection = field.collection!;
   const records = data[collection];
+  const title = (item: (typeof records)[number]) => `${recordTitle(collection, item)}${'currency' in item && ['wallets', 'debts'].includes(collection) ? ` (${item.currency})` : ''}${collection === 'debts' && 'personId' in item ? ` · ${data.people.find(person => person.id === item.personId)?.name ?? ''} · ${item.direction === 'borrowed' ? 'I owe them' : 'They owe me'}` : ''}`;
   const selected = records.find(item => item.id === value);
-  const visible = records.filter(item => recordTitle(collection, item).toLowerCase().includes(search.toLowerCase())).slice(0, 15);
+  const visible = records.filter(item => title(item).toLowerCase().includes(search.toLowerCase())).slice(0, 15);
   return <Card><Label bold>{field.label}{field.required ? ' *' : ''}</Label>
-    <Label muted>{selected ? recordTitle(collection, selected) : value ? 'Linked record no longer available' : 'None selected'}</Label>
+    <Label muted>{selected ? title(selected) : value ? 'Linked record no longer available' : 'None selected'}</Label>
     <Field label={`Find ${field.label.toLowerCase()}`} placeholder="Search by name" value={search} onChangeText={setSearch} />
-    <View style={layout.wrap}>{visible.map(item => <Button key={item.id} title={recordTitle(collection, item)} variant={item.id === value ? 'primary' : 'secondary'} onPress={() => onChange(item.id)} />)}</View>
+    <View style={layout.wrap}>{visible.map(item => <Button key={item.id} title={title(item)} variant={item.id === value ? 'primary' : 'secondary'} onPress={() => onChange(item.id)} />)}</View>
     {!records.length && <Label muted>Create a {field.label.toLowerCase()} first, then link it here.</Label>}
     {value && <Button title="Clear link" variant="ghost" onPress={() => onChange('')} />}
   </Card>;
 }
 export function ChecklistField({ label, value, onChange }: { label: string; value: Subtask[]; onChange: (value: Subtask[]) => void }) {
+  const { colors } = useTheme();
   const [title, setTitle] = useState('');
   return <Card><Label bold>{label}</Label>{value.map(item => <View key={item.id} style={layout.row}>
-    <Switch accessibilityLabel={`Complete ${item.title}`} value={item.completed} onValueChange={completed => onChange(value.map(step => step.id === item.id ? { ...step, completed } : step))} />
+    <Switch trackColor={{ false: colors.border, true: colors.primary }} thumbColor={colors.surface} accessibilityLabel={`Complete ${item.title}`} value={item.completed} onValueChange={completed => onChange(value.map(step => step.id === item.id ? { ...step, completed } : step))} />
     <View style={{ flex: 1 }}><Field label="Milestone title" value={item.title} maxLength={200} onChangeText={text => onChange(value.map(step => step.id === item.id ? { ...step, title: text } : step))} /></View>
     <Button title="Remove" variant="ghost" onPress={() => onChange(value.filter(step => step.id !== item.id))} />
   </View>)}<Field label="New milestone" value={title} maxLength={200} onChangeText={setTitle} placeholder="A small step forward" /><Button title="Add milestone" variant="secondary" disabled={!title.trim()} onPress={() => { onChange([...value, { id: createId(), title: title.trim(), completed: false }]); setTitle(''); }} /></Card>;
@@ -46,9 +49,10 @@ export function ChecklistField({ label, value, onChange }: { label: string; valu
 export function RecordField({ field, value, onChange }: { field: FieldDefinition; value: unknown; onChange: (value: unknown) => void }) {
   const { colors } = useTheme();
   const label = `${field.label}${field.required ? ' *' : ''}`;
-  if (field.type === 'boolean') return <View style={[layout.row, { justifyContent: 'space-between' }]}><View style={{ flex: 1 }}><Label bold>{label}</Label></View><Switch accessibilityLabel={label} value={Boolean(value)} trackColor={{ true: colors.primary }} onValueChange={onChange} /></View>;
+  if (field.type === 'boolean') return <View style={[layout.row, { justifyContent: 'space-between' }]}><View style={{ flex: 1 }}><Label bold>{label}</Label></View><Switch trackColor={{ false: colors.border, true: colors.primary }} thumbColor={colors.surface} accessibilityLabel={label} value={Boolean(value)} onValueChange={onChange} /></View>;
   if (field.type === 'choice') return <View style={layout.stack}><Label bold>{label}</Label><Chips items={field.options ?? []} value={String(value)} onChange={onChange} /></View>;
   if (field.type === 'relation') return <RelationField field={field} value={String(value ?? '')} onChange={onChange} />;
+  if (field.type === 'people') return <PeopleField label={label} value={value as string[]} onChange={onChange} />;
   if (field.type === 'checklist') return <ChecklistField label={label} value={value as Subtask[]} onChange={onChange} />;
   if (field.type === 'reminder') return <ReminderField value={value as Reminder | null} onChange={onChange} />;
   if (field.type === 'date') return <DateField label={label} value={value as string | null} optional={!field.required} onChange={onChange} />;

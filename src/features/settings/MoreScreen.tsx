@@ -6,6 +6,9 @@ import type { ModuleKey } from '../../types/life';
 import { modules } from '../library/catalog';
 
 const entries: { module: ModuleKey; icon: IconName }[] = [
+  { module: 'activities', icon: 'walk-outline' },
+  { module: 'people', icon: 'people-outline' },
+  { module: 'moneyCollections', icon: 'folder-outline' },
   { module: 'inbox', icon: 'file-tray-outline' }, { module: 'trips', icon: 'airplane-outline' },
   { module: 'projects', icon: 'code-slash-outline' }, { module: 'goals', icon: 'flag-outline' },
   { module: 'notes', icon: 'document-text-outline' }, { module: 'bookmarks', icon: 'bookmark-outline' },

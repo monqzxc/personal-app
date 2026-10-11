@@ -7,7 +7,7 @@ import { advanceDate } from '../../utils/recurrence.ts';
 export const emptyTask = (): TaskInput => ({
   title: '', description: '', category: 'Personal', priority: 'medium', status: 'pending',
   dueDate: null, dueTime: null, isRecurring: false, recurrence: null, tags: [], subtasks: [],
-  notes: '', reminder: null,
+  notes: '', reminder: null, peopleIds: [],
 });
 
 export class TaskService {

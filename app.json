@@ -1,26 +1,80 @@
 {
   "expo": {
-    "name": "Daywell",
+    "name": "MONAPp",
     "slug": "personal-life-dashboard",
     "scheme": "daywell",
-    "version": "0.2.0",
+    "version": "0.2.4",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "plugins": [
       "expo-router",
       "expo-font",
       "expo-notifications",
-      ["expo-calendar", { "calendarPermission": "Allow Daywell to import events from calendars you choose." }]
+      "expo-sharing",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow MONAPp to record distance and your route when you start a walk or run.",
+          "locationAlwaysAndWhenInUsePermission": "Allow MONAPp to continue your active walk or run while the screen is locked. Tracking stops when you pause or finish.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
+          "motionUsagePermission": false
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Allow MONAPp to import events from calendars you choose."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow MONAPp to choose a photo for your profile.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
     ],
     "web": {
       "bundler": "metro",
-      "output": "single"
+      "output": "single",
+      "favicon": "./assets/monap-sleeping-ghost.png"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.suppm.daywell"
+    },
+    "android": {
+      "package": "com.suppm.daywell",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
+      ]
     },
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "androidMapsConfigured": false,
+      "router": {},
+      "eas": {
+        "projectId": "c78a44ff-5b23-43de-a870-a2ab026d9760"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c78a44ff-5b23-43de-a870-a2ab026d9760",
+      "checkAutomatically": "NEVER"
+    },
+    "icon": "./assets/monap-sleeping-ghost.png"
   }
 }

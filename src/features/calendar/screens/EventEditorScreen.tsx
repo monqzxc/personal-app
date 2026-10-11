@@ -11,16 +11,17 @@ import { isDateOnly } from '../../../utils/dates';
 import { ReminderField } from '../../../components/forms/RecordFields';
 import { deviceCalendarService } from '../../../services/deviceCalendarService';
 import { DateField } from '../../../components/forms/DateField';
+import { PeopleField } from '../../../components/forms/PeopleField';
 
 export default function EventEditorScreen() {
-  const { id, date, inboxId } = useLocalSearchParams<{ id?: string; date?: string; inboxId?: string }>();
+  const { id, date, inboxId, personId } = useLocalSearchParams<{ id?: string; date?: string; inboxId?: string; personId?: string }>();
   const capture = useAppStore(state => state.data.inbox.find(item => item.id === inboxId));
   const existing = useAppStore(state => state.events.find(event => event.id === id));
   const save = useAppStore(state => state.saveEvent);
   const remove = useAppStore(state => state.deleteEvent);
   const saving = useAppStore(state => state.saving);
   const { colors } = useTheme();
-  const [draft, setDraft] = useState<EventInput>(() => existing ?? { ...emptyEvent(isDateOnly(date) ? date : undefined), title: capture?.content ?? '' });
+  const [draft, setDraft] = useState<EventInput>(() => existing ?? { ...emptyEvent(isDateOnly(date) ? date : undefined), title: capture?.content ?? '', ...(personId ? { peopleIds: [personId] } : {}) });
   const [exportMessage, setExportMessage] = useState('');
   const [exporting, setExporting] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -34,7 +35,7 @@ export default function EventEditorScreen() {
       <View style={{ flex: 1 }}><DateField label="Start date *" value={draft.startDate} onChange={value => setDraft(previous => ({ ...previous, startDate: value ?? '', endDate: previous.endDate === previous.startDate ? value ?? '' : previous.endDate }))} /></View>
       <View style={{ flex: 1 }}><DateField label="End date *" value={draft.endDate} onChange={value => change('endDate', value ?? '')} /></View>
     </View>
-    <Card><View style={[layout.row, { justifyContent: 'space-between' }]}><Label bold>All-day event</Label><Switch accessibilityLabel="All-day event" value={draft.allDay} trackColor={{ true: colors.primary }} onValueChange={value => change('allDay', value)} /></View></Card>
+    <Card><View style={[layout.row, { justifyContent: 'space-between' }]}><Label bold>All-day event</Label><Switch trackColor={{ false: colors.border, true: colors.primary }} thumbColor={colors.surface} accessibilityLabel="All-day event" value={draft.allDay} onValueChange={value => change('allDay', value)} /></View></Card>
     {!draft.allDay && <View style={[layout.row, { alignItems: 'flex-start' }]}>
       <View style={{ flex: 1 }}><Field label="Start time *" placeholder="09:00" hint="24-hour · HH:mm" value={draft.startTime ?? ''} maxLength={5} onChangeText={value => change('startTime', value || null)} /></View>
       <View style={{ flex: 1 }}><Field label="End time *" placeholder="10:00" hint="24-hour · HH:mm" value={draft.endTime ?? ''} maxLength={5} onChangeText={value => change('endTime', value || null)} /></View>
@@ -42,6 +43,7 @@ export default function EventEditorScreen() {
     <Field label="Location" placeholder="Where will you be?" value={draft.location} onChangeText={value => change('location', value)} />
     <Field label="Category" placeholder="Personal, Work, Birthday…" value={draft.category} onChangeText={value => change('category', value)} />
     <ReminderField value={draft.reminder} onChange={value => change('reminder', value)} />
+    <PeopleField value={draft.peopleIds} onChange={value => change('peopleIds', value)} />
     <Button title={id ? 'Save changes' : 'Create event'} busy={saving} onPress={() => { void save(draft, id, inboxId).then(ok => { if (ok) router.back(); }); }} />
     {existing && <Button title="Export a copy to device calendar" variant="secondary" busy={exporting} onPress={() => {
       setExporting(true); void deviceCalendarService.exportEvent(existing).then(setExportMessage).catch((error: unknown) => setExportMessage(error instanceof Error ? error.message : 'Export failed.')).finally(() => setExporting(false));

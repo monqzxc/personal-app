@@ -32,7 +32,7 @@ function setup() {
     finance: new LocalFinanceRepository(db), tasks: new TaskService(new LocalTaskRepository(db), randomUUID),
     calendar: new CalendarService(new LocalCalendarRepository(db), randomUUID) };
 }
-const input = (key: ModuleKey, values: Record<string, unknown>) => ({ ...moduleDefaults(key), ...values });
+const input = (key: ModuleKey, values: Record<string, unknown>) => ({ ...moduleDefaults(key), ...(key === 'transactions' ? { name: values.description } : {}), ...values });
 
 test('schema-1 migration retains existing records and settings and saves an untouched backup', async () => {
   const { storage, db, tasks, life } = setup();
@@ -40,7 +40,7 @@ test('schema-1 migration retains existing records and settings and saves an unto
   const legacy = JSON.stringify({ schemaVersion: 1, tasks: [task], events: [], settings: { theme: 'dark', currency: 'JPY', name: 'Alex' } });
   storage.values.set(DATABASE_KEY, legacy);
   const migrated = await db.snapshot();
-  assert.equal(migrated.schemaVersion, 2);
+  assert.equal(migrated.schemaVersion, 6);
   assert.equal(migrated.tasks[0]?.id, task.id);
   assert.equal(migrated.settings.name, 'Alex');
   assert.equal(migrated.settings.notificationsEnabled, false);
@@ -52,7 +52,14 @@ test('schema-1 migration retains existing records and settings and saves an unto
 test('each local module has validated CRUD and survives a fresh repository instance', async () => {
   const { life, db } = setup();
   const trip = await life.save('trips', input('trips', { title: 'Japan', destination: 'Tokyo' }));
+  const person = await life.save('people', input('people', { name: 'Test person' }));
+  const wallet = await life.save('wallets', input('wallets', { name: 'Cash' }));
+  const debt = await life.save('debts', input('debts', { name: 'Prior loan', personId: person.id, amount: 500, existingDebt: true }));
   const samples: Record<ModuleKey, Record<string, unknown>> = {
+    moneyCollections: { name: 'Weekend vacation' },
+    activities: { name: 'Morning walk', durationMinutes: 30, distanceKm: 2.5 },
+    people: { name: 'Juan' }, debts: { name: 'Lunch covered', personId: person.id, amount: 150, walletId: wallet.id }, repayments: { name: 'Partial payment', debtId: debt.id, amount: 100, walletId: wallet.id },
+    wallets: { name: 'Cash' }, expectedIncome: { name: 'Salary', amount: 50000 },
     transactions: { description: 'Lunch', amount: 150 }, bills: { name: 'Internet', amount: 1699 },
     subscriptions: { name: 'Music', amount: 149 }, budgets: { name: 'Food', amount: 5000 },
     savings: { name: 'Emergency fund', targetValue: 100000 }, trips: { title: 'Beach', destination: 'Batangas' },
@@ -106,7 +113,7 @@ test('currency-safe monthly totals use minor units and reject excessive precisio
   await life.save('transactions', input('transactions', { description: 'Salary', amount: 100, type: 'income', date: '2026-10-05' }));
   await life.save('transactions', input('transactions', { description: 'USD expense', amount: 90, currency: 'USD', date: '2026-10-05' }));
   await life.save('bills', input('bills', { name: 'Bill', amount: 20, dueDate: '2026-10-08' }));
-  const summary = financeSummary(await life.getAll(), 'PHP', '2026-10');
+  const summary = financeSummary(await life.getAll(), 'PHP', '2026-10', '2026-10-08');
   assert.equal(summary.expenses, 0.3);
   assert.equal(summary.available, 79.7);
   assert.equal(summary.categories[0]?.name, '__proto__');
@@ -182,5 +189,5 @@ test('re-importing calendar snapshots skips previously imported occurrences', as
   await calendar.importEvents([event, event]);
   await calendar.importEvents([event]);
   assert.equal((await calendar.getAll()).length, 1);
-  assert.equal(emptyDatabase().schemaVersion, 2);
+  assert.equal(emptyDatabase().schemaVersion, 6);
 });

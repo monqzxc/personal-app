@@ -10,9 +10,14 @@ import { CalendarService } from './calendarService';
 import { LocalLifeRepository } from '../repositories/lifeRepository';
 import { LocalFinanceRepository, type FinanceRepository } from '../repositories/financeRepository';
 import { LifeService } from './lifeService';
+import { LocalFitnessRepository } from '../repositories/fitnessRepository';
+import { BackupService } from './backupService';
+import { OnboardingService } from '../features/onboarding/onboarding';
 
 // Composition root: swap these adapters for Laravel API repositories when Phase 5 begins.
 const database = new LocalDatabase(AsyncStorage);
+export const backupService = new BackupService(database);
+export const onboardingService = new OnboardingService(AsyncStorage);
 const taskRepository: TaskRepository = new LocalTaskRepository(database);
 const calendarRepository: CalendarRepository = new LocalCalendarRepository(database);
 export const settingsRepository: SettingsRepository = new LocalSettingsRepository(database);
@@ -21,3 +26,4 @@ export const calendarService = new CalendarService(calendarRepository, randomUUI
 export const createId = randomUUID;
 export const lifeService = new LifeService(new LocalLifeRepository(database), randomUUID);
 export const financeRepository: FinanceRepository = new LocalFinanceRepository(database);
+export const fitnessRepository = new LocalFitnessRepository(database);

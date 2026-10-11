@@ -20,7 +20,7 @@ export class NotificationService {
     // Keep under iOS's pending-request limit; replenish on app open or any saved change.
     const upcoming = reminders.slice(0, 60);
     for (const reminder of upcoming) await Notifications.scheduleNotificationAsync({ identifier: reminder.id,
-      content: { title: reminder.title, body: 'Your Daywell reminder', data: { route: reminder.route } },
+      content: { title: reminder.title, body: 'Your MONAPp reminder', data: { route: reminder.route } },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(reminder.at), channelId: 'daywell' },
     });
     return `${upcoming.length} reminders scheduled${reminders.length > 60 ? ' (next 60; reopen to replenish)' : ''}. Device settings may affect delivery.`;

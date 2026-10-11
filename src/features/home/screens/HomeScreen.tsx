@@ -1,57 +1,105 @@
-import { View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { AppState, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
-import { AppHeader, Button, Card, EmptyState, Icon, IconButton, Label, Screen, SectionHeader, layout } from '../../../components/common/ui';
+import { Button, Card, Icon, IconButton, Label, Screen, SectionHeader, layout } from '../../../components/common/ui';
 import { LifeDashboardCards } from '../LifeDashboardCards';
+import { DailyQuoteCard } from '../DailyQuoteCard';
+import { WeekStrip } from '../WeekStrip';
+import { dayTasks, nextAppointment, overdueTasks, weekDates } from '../dayPlan';
 import { TaskCard } from '../../tasks/components/TaskCard';
 import { AgendaCard } from '../../calendar/components/AgendaCard';
 import { useAppStore } from '../../../stores/useAppStore';
 import { useTheme } from '../../../theme/useTheme';
-import { isActiveTask, isOverdue } from '../../tasks/selectors';
 import { agendaForDate, buildAgenda } from '../../../services/calendarService';
-import { localDate } from '../../../utils/dates';
+import { dateOnly, formatDate, localDate } from '../../../utils/dates';
+import { ProfileAvatar } from '../../../components/common/ProfileAvatar';
 import { useToday } from '../../../hooks/useToday';
 
 export default function HomeScreen() {
-  const { colors, spacing, radius } = useTheme();
+  const { colors, spacing } = useTheme();
   const tasks = useAppStore(state => state.tasks);
   const events = useAppStore(state => state.events);
+  const people = useAppStore(state => state.data.people);
+  const activities = useAppStore(state => state.data.activities);
   const name = useAppStore(state => state.settings.name);
+  const profilePhoto = useAppStore(state => state.settings.profilePhoto);
   const today = useToday();
-  const todayTasks = tasks.filter(task => isActiveTask(task) && task.dueDate === today);
-  const overdue = tasks.filter(task => isOverdue(task, today));
-  const todayEvents = agendaForDate(buildAgenda(events, []), today);
-  const completed = tasks.filter(task => task.status === 'completed' && task.completedAt && new Date(task.completedAt).toDateString() === localDate(today).toDateString()).length;
-  const hour = new Date().getHours();
+  const [selected, setSelected] = useState<string | null>(null);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const update = () => setNow(new Date());
+    const timer = setInterval(update, 30_000);
+    const subscription = AppState.addEventListener('change', state => { if (state === 'active') update(); });
+    return () => { clearInterval(timer); subscription.remove(); };
+  }, []);
+  const day = selected ?? today;
+  const focus = dayTasks(tasks, day);
+  const overdue = overdueTasks(tasks, today);
+  const agenda = buildAgenda(events, []);
+  const scheduled = agendaForDate(agenda, day);
+  const next = nextAppointment(events, day, now);
+  const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const happening = next && day === today && (next.startDate < day || (next.startTime ?? '') <= time);
+  const completed = tasks.filter(task => !task.deletedAt && task.status === 'completed' && task.completedAt && dateOnly(new Date(task.completedAt)) === day).length;
+  const marked = new Set(weekDates(day).filter(date => dayTasks(tasks, date).length || agendaForDate(agenda, date).length));
+  const active = activities.find(item => !item.deletedAt && item.status !== 'completed');
+  const hour = now.getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-  const progress = completed + todayTasks.length ? completed / (completed + todayTasks.length) : 0;
+  const nextPeople = next ? people.filter(person => !person.deletedAt && next.peopleIds.includes(person.id)) : [];
   return <Screen>
-    <View style={[layout.row, { justifyContent: 'space-between' }]}>
-      <View style={layout.row}><Icon name="leaf" color={colors.primary} /><Label size={20} bold style={{ letterSpacing: -0.5 }}>daywell</Label></View>
+    <View style={[layout.row, { alignItems: 'flex-start' }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Open your profile and settings" onPress={() => router.push('/settings')}>
+        <ProfileAvatar name={name} photo={profilePhoto} />
+      </Pressable>
+      <View style={{ flex: 1, gap: spacing.xs }}>
+        <Label size={11} bold color={colors.primary} style={{ letterSpacing: 1.5 }}>MONAPp</Label>
+        <Label size={24} bold>{greeting}{name ? `, ${name}` : ''}</Label>
+        <Label size={12} muted>{localDate(today).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</Label>
+      </View>
       <IconButton icon="search-outline" label="Search everything" onPress={() => router.push('/search')} />
     </View>
-    <AppHeader title={`${greeting}${name ? `, ${name}` : ''}.`} eyebrow={localDate(today).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} />
-    <Card style={{ backgroundColor: colors.hero, borderColor: colors.hero, padding: spacing.xl }}>
-      <View style={[layout.row, { justifyContent: 'space-between' }]}><Label color={colors.heroMuted} size={12} bold style={{ letterSpacing: 1.5 }}>A LITTLE CLARITY, EVERY DAY</Label><Icon name="sunny-outline" color={colors.accent} size={28} /></View>
-      <Label size={30} bold color={colors.onHero}>{todayTasks.length ? 'Your day, at a glance.' : 'Space for what matters.'}</Label>
-      <Label color={colors.heroMuted}>{todayTasks.length ? 'A few small steps. A little more progress.' : 'Capture a thought, make a plan, and take it one thing at a time.'}</Label>
-      <View style={[layout.row, { paddingVertical: spacing.md }]}>
-        {[{ number: todayTasks.length, label: 'Tasks today' }, { number: todayEvents.length, label: 'Events' }, { number: completed, label: 'Done today' }].map(stat => <View key={stat.label} style={{ flex: 1, gap: spacing.xs }}><Label size={34} bold color={colors.onHero}>{stat.number}</Label><Label size={12} color={colors.heroMuted}>{stat.label}</Label></View>)}
+
+    <DailyQuoteCard />
+
+    <View style={{ gap: spacing.sm }}>
+      <Label size={12} bold muted style={{ letterSpacing: 1.2 }}>MAKE A LITTLE PROGRESS</Label>
+      <View style={layout.wrap}>
+        <View style={{ flexGrow: 1, flexBasis: '46%' }}><Button title="Add expense" icon="wallet-outline" onPress={() => router.push('/quick-expense')} /></View>
+        <View style={{ flexGrow: 1, flexBasis: '46%' }}><Button title="Add task" icon="add" variant="secondary" onPress={() => router.push({ pathname: '/task', params: { date: day } })} /></View>
+        <View style={{ flexGrow: 1, flexBasis: '46%' }}><Button title="Schedule" icon="calendar-outline" variant="secondary" onPress={() => router.push({ pathname: '/event', params: { date: day } })} /></View>
+        <View style={{ flexGrow: 1, flexBasis: '46%' }}><Button title={active ? 'View workout' : 'Start walk'} icon="walk-outline" variant="secondary" onPress={() => router.push({ pathname: '/module', params: { module: 'activities', activityKind: 'walk' } })} /></View>
       </View>
-      <View accessibilityRole="progressbar" accessibilityLabel="Today's task progress" accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }} style={{ height: 5, borderRadius: radius.pill, backgroundColor: colors.primary, overflow: 'hidden' }}>
-        <View style={{ width: `${progress * 100}%`, height: '100%', backgroundColor: colors.accent }} />
-      </View>
-    </Card>
-    <View style={layout.row}><View style={{ flex: 1 }}><Button title="Add task" icon="add" variant="secondary" onPress={() => router.push('/task')} /></View><View style={{ flex: 1 }}><Button title="Plan event" icon="calendar-outline" variant="secondary" onPress={() => router.push('/event')} /></View></View>
-    {overdue.length > 0 && <View style={layout.stack}><SectionHeader title="Needs a little attention" /><Label color={colors.danger}>{overdue.length} overdue {overdue.length === 1 ? 'task' : 'tasks'}</Label>{overdue.slice(0, 3).map(task => <TaskCard key={task.id} task={task} />)}</View>}
-    <View style={layout.stack}><SectionHeader title="Today’s focus" action={<Button title="View tasks" variant="ghost" onPress={() => router.push('/tasks')} />} />
-      {todayTasks.slice(0, 4).map(task => <TaskCard key={task.id} task={task} />)}
-      {!todayTasks.length && <Card><EmptyState title="Start with one small thing" description="Give a task today’s date to bring it into focus here." icon="checkmark-circle-outline" action={<Button title="Create a task" variant="ghost" onPress={() => router.push('/task')} />} /></Card>}
     </View>
-    <View style={layout.stack}><SectionHeader title="On your calendar" action={<Button title="View all" variant="ghost" onPress={() => router.push('/calendar')} />} />
-      {todayEvents.slice(0, 3).map(item => <AgendaCard key={item.id} item={item} />)}
-      {!todayEvents.length && <Card><View style={layout.row}><Icon name="partly-sunny-outline" color={colors.primary} size={28} /><View style={{ flex: 1 }}><Label bold>No events today</Label><Label muted size={13}>A little space in your schedule.</Label></View></View></Card>}
+
+    <WeekStrip selected={day} today={today} marked={marked} onSelect={setSelected} />
+    <View style={layout.stack}>
+      <SectionHeader title={day === today ? 'Your day' : formatDate(day)} action={<Button title="Calendar" variant="ghost" onPress={() => router.push({ pathname: '/calendar', params: { date: day } })} />} />
+      <Label muted size={12}>{localDate(day).toLocaleDateString(undefined, { dateStyle: 'full' })}</Label>
+      <Card style={{ backgroundColor: colors.primarySoft, borderColor: colors.primarySoft }}>
+        <View style={[layout.row, { alignItems: 'flex-start' }]}>
+          {[{ value: focus.length, label: 'Pending tasks' }, { value: scheduled.length, label: 'Events' }, { value: completed, label: 'Completed' }].map(item => <View key={item.label} style={{ flex: 1, gap: spacing.xs }}><Label bold size={26} color={colors.primary}>{item.value}</Label><Label muted size={12}>{item.label}</Label></View>)}
+        </View>
+      </Card>
+      {next && <Pressable accessibilityRole="button" accessibilityLabel={`Open ${next.title}`} onPress={() => router.push({ pathname: '/event', params: { id: next.id } })}>
+        <Card style={{ borderColor: colors.primary }}>
+          <View style={layout.row}><Icon name="time-outline" color={colors.primary} /><Label bold size={12} color={colors.primary}>{happening ? 'HAPPENING NOW' : 'NEXT ON YOUR CALENDAR'}</Label></View>
+          <Label size={22} bold>{next.title}</Label>
+          <Label>{next.startDate === next.endDate ? `${next.startTime} - ${next.endTime}` : `${formatDate(next.startDate)} ${next.startTime} - ${formatDate(next.endDate)} ${next.endTime}`}</Label>
+          {next.location ? <View style={layout.row}><Icon name="location-outline" size={18} color={colors.muted} /><Label muted style={{ flex: 1 }}>{next.location}</Label></View> : null}
+          {nextPeople.length > 0 && <Label muted size={12}>With {nextPeople.slice(0, 3).map(person => person.name).join(', ')}{nextPeople.length > 3 ? ` +${nextPeople.length - 3}` : ''}</Label>}
+        </Card>
+      </Pressable>}
+      {focus.slice(0, 3).map(task => <TaskCard key={task.id} task={task} />)}
+      {focus.length > 3 && <Button title={`View all ${focus.length} tasks for this date`} variant="ghost" onPress={() => router.push({ pathname: '/tasks', params: { date: day } })} />}
+      {scheduled.filter(item => item.sourceId !== next?.id).slice(0, 3).map(item => <AgendaCard key={item.id} item={item} />)}
+      {!focus.length && !scheduled.length && <Card><View style={layout.row}><Icon name="moon-outline" color={colors.primary} size={30} /><View style={{ flex: 1 }}><Label bold>A little room to breathe</Label><Label muted size={13}>No tasks or events for this date. Add a small plan when you are ready.</Label></View></View><Button title="Plan something" variant="ghost" onPress={() => router.push({ pathname: '/event', params: { date: day } })} /></Card>}
     </View>
+
+    {overdue.length > 0 && <Card><View style={layout.row}><Icon name="alert-circle-outline" color={colors.warning} /><View style={{ flex: 1 }}><Label bold>{overdue.length} overdue {overdue.length === 1 ? 'task' : 'tasks'}</Label><Label muted size={12}>A small check-in for today</Label></View></View>
+      {overdue.slice(0, 2).map(task => <Button key={task.id} title={`${task.title} - ${formatDate(task.dueDate!)}`} variant="ghost" onPress={() => router.push({ pathname: '/task', params: { id: task.id } })} />)}
+      <Button title="Review overdue tasks" variant="secondary" onPress={() => router.push({ pathname: '/tasks', params: { view: 'Overdue' } })} />
+    </Card>}
     <LifeDashboardCards />
-    <View style={[layout.row, { justifyContent: 'center' }]}><Icon name="phone-portrait-outline" color={colors.muted} size={14} /><Label muted size={12}>On your device. At your pace.</Label></View>
+    <View style={[layout.row, { justifyContent: 'center' }]}><Icon name="moon-outline" color={colors.muted} size={14} /><Label muted size={12}>A little progress. A little rest.</Label></View>
   </Screen>;
 }

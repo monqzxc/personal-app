@@ -1,10 +1,12 @@
-import type { ComponentProps, PropsWithChildren } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ColorValue, type TextInputProps, type ViewStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, type ComponentProps, type PropsWithChildren } from 'react';
+import { useIsFocused } from 'expo-router';
+import { AccessibilityInfo, ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ColorValue, type TextInputProps, type ViewStyle } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from '../../theme/useTheme';
 import { radius, spacing, typography } from '../../theme/tokens';
 import { useAppStore } from '../../stores/useAppStore';
+import { useToastStore } from '../../stores/useToastStore';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 export function Icon({ name, color, size = 22 }: { name: IconName; color?: ColorValue; size?: number }) {
@@ -19,6 +21,7 @@ export function Label({ children, muted = false, size = typography.body, bold = 
 }
 export function Screen({ children }: PropsWithChildren) {
   const { colors } = useTheme();
+  const toast = useToastStore(state => state.toast);
   const error = useAppStore(state => state.actionError);
   const clearError = useAppStore(state => state.clearError);
   return <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: colors.background }}>
@@ -28,7 +31,23 @@ export function Screen({ children }: PropsWithChildren) {
         {children}
       </ScrollView>
     </KeyboardAvoidingView>
+    {toast && <SuccessToast toast={toast} />}
   </SafeAreaView>;
+}
+function SuccessToast({ toast }: { toast: { message: string } }) {
+  const focused = useIsFocused();
+  const { colors, shadows } = useTheme();
+  const insets = useSafeAreaInsets();
+  const clearToast = useToastStore(state => state.clearToast);
+  useEffect(() => {
+    if (focused && Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(toast.message);
+  }, [focused, toast]);
+  if (!focused) return null;
+  return <View style={[shadows.card, { position: 'absolute', top: insets.top + spacing.sm, left: spacing.lg, right: spacing.lg, zIndex: 10, elevation: 10, borderRadius: radius.md, backgroundColor: colors.primary, paddingLeft: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }]}>
+    <Icon name="checkmark-circle-outline" color={colors.onPrimary} />
+    <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={{ flex: 1, paddingVertical: spacing.md, color: colors.onPrimary, fontSize: typography.body }}>{toast.message}</Text>
+    <Pressable accessibilityRole="button" accessibilityLabel="Dismiss notification" onPress={clearToast} style={{ minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' }}><Icon name="close" color={colors.onPrimary} /></Pressable>
+  </View>;
 }
 export function AppHeader({ title, eyebrow, action }: { title: string; eyebrow?: string; action?: React.ReactNode }) {
   return <View style={styles.header}><View style={{ flex: 1, gap: spacing.xs }}>{eyebrow && <Label muted size={typography.caption} bold style={{ letterSpacing: 1.4 }}>{eyebrow.toUpperCase()}</Label>}<Label size={typography.heading} bold>{title}</Label></View>{action}</View>;

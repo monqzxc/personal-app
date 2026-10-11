@@ -1,11 +1,14 @@
 import { create } from 'zustand';
+import { useToastStore } from './useToastStore';
 import type { CalendarEvent, EventInput, Settings, Task, TaskInput } from '../types/models';
-import { calendarService, settingsRepository, taskService, lifeService, financeRepository, createId } from '../services/container';
+import { calendarService, settingsRepository, taskService, lifeService, financeRepository, createId, backupService, onboardingService } from '../services/container';
+import type { BackupPreview } from '../services/backupService';
 import type { LifeCollections, ModuleKey } from '../types/life';
-import { emptyLifeCollections } from '../features/library/catalog';
+import { emptyLifeCollections, modules } from '../features/library/catalog';
 import { dateOnly } from '../utils/dates';
 import { notificationService } from '../services/notificationService';
 import { collectReminders } from '../services/reminderSelectors';
+import { fitnessTracking } from '../services/fitnessTracking';
 
 interface AppState {
   tasks: Task[];
@@ -14,11 +17,13 @@ interface AppState {
   data: LifeCollections;
   notificationStatus: string;
   loaded: boolean;
+  onboardingRequired: boolean;
   loading: boolean;
   saving: boolean;
   loadError: string | null;
   actionError: string | null;
   initialize(): Promise<void>;
+  completeOnboarding(): Promise<boolean>;
   saveTask(input: TaskInput, id?: string, inboxId?: string): Promise<boolean>;
   toggleTask(id: string): Promise<boolean>;
   deleteTask(id: string): Promise<boolean>;
@@ -30,7 +35,11 @@ interface AppState {
   deleteRecord(key: ModuleKey, id: string): Promise<boolean>;
   payBill(id: string): Promise<boolean>;
   renewSubscription(id: string): Promise<boolean>;
+  receiveIncome(id: string): Promise<boolean>;
   importEvents(events: EventInput[]): Promise<boolean>;
+  restoreBackup(preview: BackupPreview): Promise<boolean>;
+  assignMoneyRecords(items: { module: 'transactions' | 'debts' | 'repayments'; id: string }[], collectionId: string,
+    newCollection?: { name: string; notes: string; tripId: string; peopleIds: string[] }): Promise<boolean>;
 }
 const message = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong. Please try again.';
 const upsert = <T extends { id: string }>(items: T[], item: T) => [...items.filter(old => old.id !== item.id), item];
@@ -42,55 +51,71 @@ export const useAppStore = create<AppState>((set, get) => {
     try { set({ notificationStatus: await notificationService.reconcile(collectReminders(tasks, events, data), settings.notificationsEnabled) }); }
     catch (error) { set({ notificationStatus: `Records saved; reminder scheduling failed: ${message(error)}` }); }
   }
-  async function mutate(operation: () => Promise<void>): Promise<boolean> {
+  async function mutate(successMessage: string, operation: () => Promise<void>): Promise<boolean> {
     if (get().saving) return false;
+    useToastStore.getState().clearToast();
     set({ saving: true, actionError: null });
-    try { await operation(); await refresh(); return true; }
+    try { await operation(); await refresh(); useToastStore.getState().showToast(successMessage); return true; }
     catch (error) { set({ actionError: message(error) }); return false; }
     finally { set({ saving: false }); }
   }
   return {
     tasks: [], events: [], data: emptyLifeCollections(), settings: { theme: 'system', currency: 'PHP', name: '', notificationsEnabled: false }, notificationStatus: '',
-    loaded: false, loading: false, saving: false, loadError: null, actionError: null,
+    loaded: false, onboardingRequired: false, loading: false, saving: false, loadError: null, actionError: null,
     async initialize() {
       if (get().loading || get().saving) return;
       set({ loading: true, loadError: null });
       try {
+        const onboardingRequired = get().loaded ? get().onboardingRequired : await onboardingService.required();
+        try { await fitnessTracking.recover(); } catch (error) { set({ actionError: `Workout recovery: ${message(error)}` }); }
         await refresh();
-        set({ loaded: true });
+        set({ loaded: true, onboardingRequired });
       } catch (error) { set({ loadError: message(error) }); }
       finally { set({ loading: false }); }
     },
-    saveTask: (input, id, inboxId) => mutate(async () => {
+    async completeOnboarding() {
+      if (!get().loaded || get().loading || get().saving) return false;
+      set({ saving: true, actionError: null });
+      try {
+        await onboardingService.complete();
+        set({ onboardingRequired: false });
+        return true;
+      } catch (error) { set({ actionError: message(error) }); return false; }
+      finally { set({ saving: false }); }
+    },
+    saveTask: (input, id, inboxId) => mutate(id ? 'Task updated.' : 'Task saved.', async () => {
       const task = await taskService.save(input, id, inboxId);
       set(state => ({ tasks: upsert(state.tasks, task) }));
     }),
-    toggleTask: id => mutate(async () => {
+    toggleTask: id => mutate('Task updated.', async () => {
       const task = await taskService.toggle(id);
       set(state => ({ tasks: upsert(state.tasks, task) }));
     }),
-    deleteTask: id => mutate(async () => {
+    deleteTask: id => mutate('Task deleted.', async () => {
       await taskService.delete(id);
       set(state => ({ tasks: state.tasks.filter(task => task.id !== id) }));
     }),
-    saveEvent: (input, id, inboxId) => mutate(async () => {
+    saveEvent: (input, id, inboxId) => mutate(id ? 'Event updated.' : 'Event saved.', async () => {
       const event = await calendarService.save(input, id, inboxId);
       set(state => ({ events: upsert(state.events, event) }));
     }),
-    deleteEvent: id => mutate(async () => {
+    deleteEvent: id => mutate('Event deleted.', async () => {
       await calendarService.delete(id);
       set(state => ({ events: state.events.filter(event => event.id !== id) }));
     }),
-    updateSettings: patch => mutate(async () => {
+    updateSettings: patch => mutate('Preferences updated.', async () => {
       if (patch.notificationsEnabled && !get().settings.notificationsEnabled) await notificationService.enable();
       const settings = await settingsRepository.update(patch);
       set({ settings });
     }),
     clearError: () => set({ actionError: null }),
-    saveRecord: (key, input, id, inboxId) => mutate(async () => { await lifeService.save(key, input, id, inboxId); }),
-    deleteRecord: (key, id) => mutate(() => lifeService.delete(key, id)),
-    payBill: id => mutate(() => financeRepository.payBill(id, createId(), createId(), dateOnly())),
-    renewSubscription: id => mutate(() => financeRepository.renewSubscription(id, createId(), dateOnly())),
-    importEvents: events => mutate(() => calendarService.importEvents(events)),
+    saveRecord: (key, input, id, inboxId) => mutate(`${key === 'transactions' && input.type === 'expense' ? 'Expense' : modules[key].singular} ${id ? 'updated' : 'saved'}.`, async () => { await lifeService.save(key, input, id, inboxId); }),
+    deleteRecord: (key, id) => mutate(`${modules[key].singular} deleted.`, () => lifeService.delete(key, id)),
+    payBill: id => mutate('Payment saved.', () => financeRepository.payBill(id, createId(), createId(), dateOnly())),
+    renewSubscription: id => mutate('Renewal saved.', () => financeRepository.renewSubscription(id, createId(), dateOnly())),
+    receiveIncome: id => mutate('Income received and saved.', () => financeRepository.receiveIncome(id, createId(), dateOnly())),
+    importEvents: events => mutate('Events imported.', () => calendarService.importEvents(events)),
+    restoreBackup: preview => mutate('Backup restored.', () => backupService.restore(preview)),
+    assignMoneyRecords: (items, collectionId, newCollection) => mutate('Collection updated.', () => financeRepository.assignMoneyRecords(items, collectionId, newCollection ? { ...newCollection, id: createId() } : undefined)),
   };
 });

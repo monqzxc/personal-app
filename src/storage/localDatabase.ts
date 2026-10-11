@@ -1,5 +1,5 @@
 import type { Database } from '../types/models.ts';
-import { validateDatabase } from '../services/validation.ts';
+import { ensure, validateDatabase } from '../services/validation.ts';
 import { emptyDatabase, migrateDatabase, SCHEMA_VERSION } from './migrations.ts';
 
 export interface KeyValueStorage {
@@ -7,6 +7,17 @@ export interface KeyValueStorage {
   setItem(key: string, value: string): Promise<void>;
 }
 export const DATABASE_KEY = 'daywell.database';
+export const BEFORE_IMPORT_KEY = `${DATABASE_KEY}.beforeImport`;
+
+export function requireRestorableSize(data: Database): void {
+  // shortcut: stay below Android's per-entry read limit; use SQLite for larger datasets.
+  ensure(new TextEncoder().encode(JSON.stringify(data)).byteLength <= 1.5 * 1024 * 1024,
+    'This version can restore up to 1.5 MB of saved records. This dataset is too large; your current data has not changed.');
+}
+
+export function requireFinishedWorkouts(data: Database): void {
+  ensure(!data.activities.some(item => !item.deletedAt && item.status !== 'completed'), 'Finish and save the active workout before exporting or importing a backup.');
+}
 
 export class LocalDatabase {
   private storage: KeyValueStorage;
@@ -39,6 +50,30 @@ export class LocalDatabase {
   }
 
   snapshot(): Promise<Database> { return this.exclusive(() => this.read()); }
+
+  previousSnapshot(): Promise<Database | null> {
+    return this.exclusive(async () => {
+      const raw = await this.storage.getItem(BEFORE_IMPORT_KEY);
+      return raw === null ? null : migrateDatabase(JSON.parse(raw));
+    });
+  }
+
+  replace(data: Database, expected: string): Promise<void> {
+    validateDatabase(data);
+    requireFinishedWorkouts(data);
+    requireRestorableSize(data);
+    const replacement = JSON.stringify(data);
+    return this.exclusive(async () => {
+      const current = await this.read();
+      requireFinishedWorkouts(current);
+      requireRestorableSize(current);
+      const original = JSON.stringify(current);
+      ensure(original === expected, 'Your data changed after the preview. Choose the backup again to review the latest data before replacing it.');
+      // Keep a recoverable copy before the single write that replaces the database.
+      await this.storage.setItem(BEFORE_IMPORT_KEY, original);
+      await this.storage.setItem(DATABASE_KEY, replacement);
+    });
+  }
 
   mutate<T>(change: (draft: Database) => T): Promise<T> {
     return this.exclusive(async () => {

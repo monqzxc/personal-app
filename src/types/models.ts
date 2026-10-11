@@ -21,6 +21,7 @@ export interface Recurrence { frequency: 'daily' | 'weekly' | 'monthly'; interva
 export interface Reminder { at: Timestamp }
 export interface Subtask { id: string; title: string; completed: boolean }
 export interface Task extends Entity {
+  peopleIds: string[];
   title: string;
   description: string;
   category: string;
@@ -42,6 +43,7 @@ export interface Task extends Entity {
 
 export type RelatedEntityType = 'task' | 'bill' | 'trip' | 'subscription';
 export interface CalendarEvent extends Entity {
+  peopleIds: string[];
   title: string;
   description: string;
   startDate: DateOnly;
@@ -62,10 +64,11 @@ export interface Settings {
   currency: string;
   name: string;
   notificationsEnabled: boolean;
+  profilePhoto?: string;
 }
 
 export interface Database extends LifeCollections {
-  schemaVersion: 2;
+  schemaVersion: 6;
   tasks: Task[];
   events: CalendarEvent[];
   settings: Settings;

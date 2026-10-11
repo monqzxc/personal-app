@@ -40,6 +40,12 @@ export class LocalRepository<K extends keyof Collections> implements Repository<
       const next = { ...previous, ...patch, id: previous.id, createdAt: previous.createdAt,
         deletedAt: previous.deletedAt, updatedAt: new Date().toISOString(),
         version: previous.version + 1, syncStatus: 'local' as const };
+      if (this.collection === 'debts' && 'direction' in previous && 'direction' in next && previous.direction !== next.direction) {
+        ensure(!data.repayments.some(item => !item.deletedAt && item.debtId === id), 'Remove or reassign repayments before changing who owes this debt.');
+      }
+      if ((this.collection === 'bills' || this.collection === 'expectedIncome') && 'status' in previous && 'status' in next) {
+        ensure(!['paid', 'received'].includes(previous.status) || next.status === previous.status, 'A settled plan cannot be reopened. Correct its transaction instead.');
+      }
       records[index] = next;
       return next;
     });
@@ -48,6 +54,10 @@ export class LocalRepository<K extends keyof Collections> implements Repository<
     return this.db.mutate(data => {
       const record = (data[this.collection] as Collections[K][]).find(item => item.id === id && !item.deletedAt);
       ensure(record, 'This record no longer exists.');
+      if (this.collection === 'activities' && 'route' in record && 'status' in record) {
+        ensure(record.status === 'completed', 'Finish the active workout before deleting it.');
+        record.route = [];
+      }
       record.deletedAt = record.updatedAt = new Date().toISOString();
       record.version += 1;
       record.syncStatus = 'local';

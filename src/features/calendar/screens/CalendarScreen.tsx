@@ -1,18 +1,23 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { AppHeader, Button, Card, EmptyState, IconButton, Label, Screen, SectionHeader, layout } from '../../../components/common/ui';
 import { useAppStore } from '../../../stores/useAppStore';
 import { useTheme } from '../../../theme/useTheme';
 import { agendaForDate, buildAgenda } from '../../../services/calendarService';
-import { dateOnly, formatDate, localDate, monthCells } from '../../../utils/dates';
+import { dateOnly, formatDate, isDateOnly, localDate, monthCells } from '../../../utils/dates';
 import { useToday } from '../../../hooks/useToday';
 import { AgendaCard } from '../components/AgendaCard';
 
 export default function CalendarScreen() {
   const today = useToday();
-  const [selected, setSelected] = useState(today);
-  const [month, setMonth] = useState(`${today.slice(0, 7)}-01`);
+  const { date } = useLocalSearchParams<{ date?: string }>();
+  const initialDate = isDateOnly(date) ? date : today;
+  const [selected, setSelected] = useState(initialDate);
+  const [month, setMonth] = useState(`${initialDate.slice(0, 7)}-01`);
+  useFocusEffect(useCallback(() => {
+    if (isDateOnly(date)) { setSelected(date); setMonth(`${date.slice(0, 7)}-01`); router.setParams({ date: undefined }); }
+  }, [date]));
   const { colors, radius, spacing } = useTheme();
   const tasks = useAppStore(state => state.tasks);
   const events = useAppStore(state => state.events);

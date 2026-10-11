@@ -10,7 +10,7 @@ import { emptyLifeCollections } from '../features/library/catalog.ts';
 export const emptyEvent = (date = dateOnly()): EventInput => ({
   title: '', description: '', startDate: date, endDate: date, startTime: null, endTime: null,
   allDay: true, location: '', category: 'Personal', reminder: null,
-  relatedEntityType: null, relatedEntityId: null,
+  relatedEntityType: null, relatedEntityId: null, peopleIds: [],
 });
 export interface AgendaItem {
   id: string; title: string; date: DateOnly; endDate: DateOnly;
