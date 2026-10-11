@@ -77,9 +77,9 @@ On a test device:
 
 ## Quick Expense save return
 
-Quick Add and Quick Expense now use full-screen stack pages. Saving closes the keyboard and returns to the page that opened the expense; if there is no previous stack page, it opens Finance. Save & add another stays in the form. This removes the native modal replacement/dismissal path associated with the reported black screen after a saved expense. It does not change stored expenses.
+Quick Add and Quick Expense now use full-screen stack pages. **Save expense** closes the keyboard and returns to Home, where the **Expense saved.** toast appears, wherever the form was opened from. **Cancel** returns to the page that opened the expense; if there is no previous stack page, it opens Finance. Save & add another stays in the form. This removes the native modal replacement/dismissal path associated with the reported black screen after a saved expense. It does not change stored expenses.
 
-Phone verification is still required: open Quick Expense from Home, Quick Add, Finance, a collection, and a person; save with the keyboard open, confirm the previous page appears, and verify the expense exists exactly once. Also test Save & add another and Cancel. The reported native screen failure has not been reproduced on a connected device.
+Phone verification is still required: open Quick Expense from Home, Quick Add, Finance, a collection, and a person; save with the keyboard open, confirm Home appears with the toast, and verify the expense exists exactly once. Also test Save & add another and Cancel. The reported native screen failure has not been reproduced on a connected device.
 
 ## Success feedback and blank tab workaround
 

@@ -12,7 +12,7 @@ The [Expo image picker](https://docs.expo.dev/versions/v57.0.0/sdk/imagepicker/)
 
 ## Quick Expense
 
-The reported expense was saved successfully before the screen became black. Quick Add and Quick Expense now use ordinary stack pages, avoiding the modal replacement/dismissal flow. Saving closes the keyboard first, then returns to the existing caller; if there is no previous page, it opens Finance. Save & add another keeps the form open. A failed save stays on the form with its error and entered values.
+The reported expense was saved successfully before the screen became black. Quick Add and Quick Expense now use ordinary stack pages, avoiding the modal replacement/dismissal flow. Saving closes the keyboard first, then returns to Home with an **Expense saved.** toast. Cancel returns to the existing caller, or opens Finance if there is no previous page. Save & add another keeps the form open. A failed save stays on the form with its error and entered values.
 
 The native black-screen symptom has not been reproduced on a physical device here. These changes address the return path; the device checks below are still required.
 
@@ -31,7 +31,7 @@ Install the resulting APK over the existing app with the same signing key; do no
 
 On your phone:
 
-1. Save Quick Expense from Home, the Quick Add button, Finance, and a Collection. Confirm the caller appears immediately and the expense appears exactly once.
+1. Save Quick Expense from Home, the Quick Add button, Finance, and a Collection. Confirm Home appears immediately with the **Expense saved.** toast and the expense appears exactly once.
 2. Try Save & add another, Cancel, and an invalid amount with the keyboard open.
 3. Choose a photo, cancel selection, replace it, and remove it. Save each intended change, restart the app, and check Home.
 4. Export and restore JSON with a photo, then check it still displays. Also check permission denial and light/dark themes.

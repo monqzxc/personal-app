@@ -9,7 +9,7 @@ import { useTheme } from '../../theme/useTheme';
 import { dateOnly, isDateOnly } from '../../utils/dates';
 import { moduleDefaults } from '../library/catalog';
 import { quickExpenseAmount } from './expenseSelectors';
-import { closeQuickExpense } from './quickExpenseNavigation';
+import { closeQuickExpense, finishQuickExpense } from './quickExpenseNavigation';
 
 export default function QuickExpenseScreen() {
   const params = useLocalSearchParams<{ tripId?: string; personId?: string; collectionId?: string; currency?: string }>();
@@ -49,7 +49,7 @@ export default function QuickExpenseScreen() {
       });
       if (ok && another) {
         setName(''); setDescription(''); setAmount(''); setPersonId(params.personId ?? '');
-      } else if (ok) closeQuickExpense(router, Keyboard.dismiss);
+      } else if (ok) finishQuickExpense(router, Keyboard.dismiss);
     } finally { submitting.current = false; }
   }
   return <Screen><AppHeader title="Quick expense" eyebrow="Capture now. Organize later." />

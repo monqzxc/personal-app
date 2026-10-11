@@ -1,9 +1,15 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { closeQuickExpense } from '../src/features/finance/quickExpenseNavigation.ts';
+import { closeQuickExpense, finishQuickExpense } from '../src/features/finance/quickExpenseNavigation.ts';
 
-test('saving or cancelling Quick Expense returns to the caller and dismisses the keyboard first', () => {
+test('saving Quick Expense dismisses the keyboard, then returns Home in one navigation action', () => {
+  const events: string[] = [];
+  finishQuickExpense({ dismissTo: href => { events.push(`dismissTo ${String(href)}`); } }, () => events.push('keyboard'));
+  assert.deepEqual(events, ['keyboard', 'dismissTo /']);
+});
+
+test('cancelling Quick Expense returns to the caller and dismisses the keyboard first', () => {
   for (const caller of ['/(tabs)', '/finance', '/expenses?collectionId=weekend', '/record?module=people&id=alex']) {
     const history = [caller, '/quick-expense'];
     const events: string[] = [];
