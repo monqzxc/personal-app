@@ -5,7 +5,7 @@ import { AppHeader, Button, Card, EmptyState, Field, Label, Screen, layout } fro
 import { ConfirmationModal } from '../../../components/common/ConfirmationModal';
 import { useAppStore } from '../../../stores/useAppStore';
 import { useTheme } from '../../../theme/useTheme';
-import { emptyEvent } from '../../../services/calendarService';
+import { emptyEventAt } from '../../../services/calendarService';
 import type { EventInput } from '../../../types/models';
 import { isDateOnly } from '../../../utils/dates';
 import { ReminderField } from '../../../components/forms/RecordFields';
@@ -14,14 +14,14 @@ import { DateField } from '../../../components/forms/DateField';
 import { PeopleField } from '../../../components/forms/PeopleField';
 
 export default function EventEditorScreen() {
-  const { id, date, inboxId, personId } = useLocalSearchParams<{ id?: string; date?: string; inboxId?: string; personId?: string }>();
+  const { id, date, time, inboxId, personId } = useLocalSearchParams<{ id?: string; date?: string; time?: string; inboxId?: string; personId?: string }>();
   const capture = useAppStore(state => state.data.inbox.find(item => item.id === inboxId));
   const existing = useAppStore(state => state.events.find(event => event.id === id));
   const save = useAppStore(state => state.saveEvent);
   const remove = useAppStore(state => state.deleteEvent);
   const saving = useAppStore(state => state.saving);
   const { colors } = useTheme();
-  const [draft, setDraft] = useState<EventInput>(() => existing ?? { ...emptyEvent(isDateOnly(date) ? date : undefined), title: capture?.content ?? '', ...(personId ? { peopleIds: [personId] } : {}) });
+  const [draft, setDraft] = useState<EventInput>(() => existing ?? { ...emptyEventAt(isDateOnly(date) ? date : undefined, time), title: capture?.content ?? '', ...(personId ? { peopleIds: [personId] } : {}) });
   const [exportMessage, setExportMessage] = useState('');
   const [exporting, setExporting] = useState(false);
   const [confirm, setConfirm] = useState(false);

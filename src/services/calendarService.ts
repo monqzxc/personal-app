@@ -12,6 +12,15 @@ export const emptyEvent = (date = dateOnly()): EventInput => ({
   allDay: true, location: '', category: 'Personal', reminder: null,
   relatedEntityType: null, relatedEntityId: null, peopleIds: [],
 });
+// A new event beside an agenda item: starts at its time and runs an hour, ending by 23:59 the same day.
+export function emptyEventAt(date?: DateOnly, time?: string | null): EventInput {
+  const event = emptyEvent(date);
+  if (!time || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return event;
+  const start = Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
+  const end = Math.min(start + 60, 23 * 60 + 59);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return { ...event, allDay: false, startTime: time, endTime: end > start ? `${pad(Math.floor(end / 60))}:${pad(end % 60)}` : null };
+}
 export interface AgendaItem {
   id: string; title: string; date: DateOnly; endDate: DateOnly;
   time: string | null; kind: 'event' | 'task' | 'record'; sourceId: string; detail: string; module?: ModuleKey;

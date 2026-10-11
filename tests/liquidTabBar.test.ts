@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { liquidBarHeight, liquidBodyHeight, liquidTabGeometry } from '../src/components/navigation/liquidTabGeometry.ts';
+import { INDICATOR_ART, INDICATOR_WAVE, LIQUID_BAR_TOP, liquidBarHeight, liquidBodyHeight, liquidTabGeometry } from '../src/components/navigation/liquidTabGeometry.ts';
 
 test('all five phone tabs fit with reachable targets and space for both end notches', () => {
   for (const width of [272, 296, 328, 366, 420, 560]) {
@@ -28,6 +28,35 @@ test('interpolated selection stays inside the bar during long and interrupted mo
     }
     assert.equal(g.first + 4 * g.step, g.centers[4]);
   }
+});
+
+test('the fluffy indicator, ear and tail included, stays inside the bar while it travels and wobbles', () => {
+  for (const width of [240, 272, 296, 328, 366, 420, 560]) {
+    const g = liquidTabGeometry(width, 5);
+    const size = g.indicatorSize;
+    const half = Math.max(INDICATOR_ART.bodyX - INDICATOR_ART.left, INDICATOR_ART.right - INDICATOR_ART.bodyX) * size;
+    const earRise = (INDICATOR_ART.bodyY - INDICATOR_ART.top) * size;
+    // Tilting swings the ear tip sideways by up to rise * sin(tilt).
+    const reach = half * (1 + INDICATOR_WAVE.stretch) + earRise * Math.sin(INDICATOR_WAVE.tilt * Math.PI / 180);
+    for (const index of [0, 0.1, 0.5, 1.9, 2.2, 3.6, 4]) {
+      const center = g.first + index * g.step;
+      assert.ok(center - reach >= 0, `${width}@${index}: left edge`);
+      assert.ok(center + reach <= width, `${width}@${index}: right edge`);
+    }
+    // The ear may rise into the space above the bar, but not past the top of the tab bar.
+    assert.ok(LIQUID_BAR_TOP + g.indicatorCenter - earRise - INDICATOR_WAVE.hop >= 0, `${width}: ear top`);
+    assert.ok(size >= 57 && size <= 98, `${width}: indicator size ${size}`);
+  }
+});
+
+test('the active icon rises onto the centre of the indicator body', () => {
+  for (const width of [240, 296, 420]) {
+    const g = liquidTabGeometry(width, 5);
+    assert.ok(g.iconLift >= 0);
+    // Resting icons are centred 24dp below the bar top; the focused icon lifts onto the body.
+    assert.equal(24 - g.iconLift, g.indicatorCenter);
+  }
+  assert.equal(liquidTabGeometry(240, 5).iconLift, 0);
 });
 
 test('very narrow windows use compact slots and a single tab stays centered', () => {

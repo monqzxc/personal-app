@@ -91,7 +91,7 @@ export default function HomeScreen() {
       </Pressable>}
       {focus.slice(0, 3).map(task => <TaskCard key={task.id} task={task} />)}
       {focus.length > 3 && <Button title={`View all ${focus.length} tasks for this date`} variant="ghost" onPress={() => router.push({ pathname: '/tasks', params: { date: day } })} />}
-      {scheduled.filter(item => item.sourceId !== next?.id).slice(0, 3).map(item => <AgendaCard key={item.id} item={item} />)}
+      {scheduled.filter(item => item.sourceId !== next?.id).slice(0, 3).map(item => <AgendaCard key={item.id} item={item} day={day} />)}
       {!focus.length && !scheduled.length && <Card><View style={layout.row}><Icon name="moon-outline" color={colors.primary} size={30} /><View style={{ flex: 1 }}><Label bold>A little room to breathe</Label><Label muted size={13}>No tasks or events for this date. Add a small plan when you are ready.</Label></View></View><Button title="Plan something" variant="ghost" onPress={() => router.push({ pathname: '/event', params: { date: day } })} /></Card>}
     </View>
 

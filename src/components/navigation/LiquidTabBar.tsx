@@ -3,7 +3,7 @@ import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { BottomTabBarHeightCallbackContext, type BottomTabBarProps } from 'expo-router/js-tabs';
 import Animated, { cancelAnimation, ReduceMotion, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 import { useTheme } from '../../theme/useTheme';
-import { LIQUID_BAR_TOP, liquidBarHeight, liquidBodyHeight, liquidTabGeometry, type LiquidTabGeometry } from './liquidTabGeometry';
+import { INDICATOR_ART, INDICATOR_WAVE, LIQUID_BAR_TOP, liquidBarHeight, liquidBodyHeight, liquidTabGeometry, type LiquidTabGeometry } from './liquidTabGeometry';
 
 type Props = BottomTabBarProps & { keyboardVisible: boolean; reducedMotion: boolean };
 
@@ -29,15 +29,12 @@ function LiquidShape({ geometry: g, position, ripple, direction }: { geometry: L
   });
   const leftCurve = useAnimatedStyle(() => ({ borderTopRightRadius: g.shoulder - Math.max(0, Math.min(1, ripple.value)) * 4 }));
   const rightCurve = useAnimatedStyle(() => ({ borderTopLeftRadius: g.shoulder - Math.max(0, Math.min(1, ripple.value)) * 4 }));
-  const bubble = useAnimatedStyle(() => {
+  const indicator = useAnimatedStyle(() => {
     const wave = Math.max(0, Math.min(1, ripple.value));
-    const half = g.bubbleSize / 2;
-    return { borderTopLeftRadius: half - wave * 8, borderTopRightRadius: half - wave * 2,
-      borderBottomLeftRadius: half - wave * 2, borderBottomRightRadius: half - wave * 8,
-      transform: [{ translateX: g.first + position.value * g.step - half }, { translateY: -wave * 4 },
-        { rotate: `${direction.value * wave * 6}deg` }, { scaleX: 1 + wave * 0.12 }, { scaleY: 1 - wave * 0.1 }] };
+    return { transform: [{ translateX: g.first + position.value * g.step - g.indicatorSize * INDICATOR_ART.bodyX }, { translateY: -wave * INDICATOR_WAVE.hop },
+      { rotate: `${direction.value * wave * INDICATOR_WAVE.tilt}deg` }, { scaleX: 1 + wave * INDICATOR_WAVE.stretch }, { scaleY: 1 - wave * INDICATOR_WAVE.squash }] };
   });
-  const centerY = LIQUID_BAR_TOP + (g.compact ? 24 : g.shoulder - 2);
+  const centerY = LIQUID_BAR_TOP + g.indicatorCenter;
   return <View pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }}>
     {!g.compact && <Animated.View style={[{ position: 'absolute', top: LIQUID_BAR_TOP, left: 0 }, moving]}>
       <Animated.View style={[{ position: 'absolute', top: 0, backgroundColor: colors.background }, hollow]} />
@@ -48,9 +45,8 @@ function LiquidShape({ geometry: g, position, ripple, direction }: { geometry: L
         <Animated.View style={[{ flex: 1, backgroundColor: colors.hero }, rightCurve]} />
       </Animated.View>
     </Animated.View>}
-    <Animated.View style={[{ position: 'absolute', top: centerY - g.bubbleSize / 2, left: 0, width: g.bubbleSize, height: g.bubbleSize,
-      backgroundColor: colors.primary, borderWidth: 1, borderColor: colors.accent,
-      boxShadow: [{ offsetX: 0, offsetY: 4, blurRadius: 12, color: `${colors.primary}66` }] }, bubble]} />
+    <Animated.Image source={require('../../../assets/tab-indicator.png')} resizeMode="contain" style={[{ position: 'absolute', top: centerY - g.indicatorSize * INDICATOR_ART.bodyY, left: 0,
+      width: g.indicatorSize, height: g.indicatorSize, tintColor: colors.indicator, transformOrigin: `${INDICATOR_ART.bodyX * 100}% ${INDICATOR_ART.bodyY * 100}%` }, indicator]} />
   </View>;
 }
 
@@ -60,10 +56,9 @@ function LiquidTabItem({ index, geometry: g, position, state, descriptors, navig
   const { options } = descriptors[route.key]!;
   const focused = state.index === index;
   const label = typeof options.tabBarLabel === 'string' ? options.tabBarLabel : options.title ?? route.name;
-  const lift = g.compact ? 0 : 26 - g.shoulder;
   const iconMotion = useAnimatedStyle(() => {
     const active = Math.max(0, 1 - Math.abs(position.value - index));
-    return { transform: [{ translateY: -lift * active }, { scale: 1 + active * 0.06 }] };
+    return { transform: [{ translateY: -g.iconLift * active }, { scale: 1 + active * 0.06 }] };
   });
   const mutedIcon = useAnimatedStyle(() => ({ opacity: Math.min(1, Math.abs(position.value - index)) }));
   const activeIcon = useAnimatedStyle(() => ({ opacity: Math.max(0, 1 - Math.abs(position.value - index)) }));
@@ -76,7 +71,7 @@ function LiquidTabItem({ index, geometry: g, position, state, descriptors, navig
     style={({ pressed }) => ({ position: 'absolute', top: 0, left: g.centers[index]! - g.touchWidth / 2, width: g.touchWidth, height: LIQUID_BAR_TOP + bodyHeight, alignItems: 'center', zIndex: 2, opacity: pressed ? 0.7 : 1 })}>
     <Animated.View pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[{ position: 'absolute', top: LIQUID_BAR_TOP + 10, width: 28, height: 28 }, iconMotion]}>
       <Animated.View style={[{ position: 'absolute', width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }, mutedIcon]}>{options.tabBarIcon?.({ focused: false, color: colors.heroMuted, size: 24 })}</Animated.View>
-      <Animated.View style={[{ position: 'absolute', width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }, activeIcon]}>{options.tabBarIcon?.({ focused: true, color: colors.onPrimary, size: 24 })}</Animated.View>
+      <Animated.View style={[{ position: 'absolute', width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }, activeIcon]}>{options.tabBarIcon?.({ focused: true, color: colors.onIndicator, size: 24 })}</Animated.View>
     </Animated.View>
     <Text numberOfLines={1} style={{ position: 'absolute', bottom: 10, left: 1, right: 1, textAlign: 'center', fontSize: 11, lineHeight: 16, color: focused ? colors.onHero : colors.heroMuted, fontWeight: focused ? '700' : '400' }}>{label}</Text>
   </Pressable>;

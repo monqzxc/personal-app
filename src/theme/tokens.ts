@@ -8,13 +8,13 @@ export const palettes = {
     muted: '#71627F', border: '#E4DAEF', primary: '#6D3AC7', primarySoft: '#EDE2FC',
     onPrimary: '#FFFFFF', danger: '#AB3B34', dangerSoft: '#FCECE7', warning: '#906417',
     warningSoft: '#F7EFDC', accent: '#E2CAFF', hero: '#301B4B', onHero: '#FCF8FF',
-    heroMuted: '#D6C4EC', heroTrack: '#5B3B79', overlay: 'rgba(24, 12, 38, 0.5)', transparent: 'transparent',
+    heroMuted: '#D6C4EC', heroTrack: '#5B3B79', indicator: '#C8A7FF', onIndicator: '#25113F', artShade: '#E8DDF6', artLight: '#9B6BDF', overlay: 'rgba(24, 12, 38, 0.5)', transparent: 'transparent',
   },
   dark: {
     background: '#171122', surface: '#231A31', surfaceAlt: '#30243F', text: '#F5EEFC',
     muted: '#BBAACB', border: '#463455', primary: '#C8A7FF', primarySoft: '#3C2857',
     onPrimary: '#25113F', danger: '#FFB3A5', dangerSoft: '#482E29', warning: '#E5C780',
     warningSoft: '#403B29', accent: '#E2CAFF', hero: '#35204F', onHero: '#FCF8FF',
-    heroMuted: '#D6C4EC', heroTrack: '#5B3B79', overlay: 'rgba(0, 0, 0, 0.7)', transparent: 'transparent',
+    heroMuted: '#D6C4EC', heroTrack: '#5B3B79', indicator: '#C8A7FF', onIndicator: '#25113F', artShade: '#2B1C3F', artLight: '#8B5CD6', overlay: 'rgba(0, 0, 0, 0.7)', transparent: 'transparent',
   },
 };
