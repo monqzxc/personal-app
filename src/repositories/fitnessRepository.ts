@@ -11,11 +11,11 @@ export class LocalFitnessRepository {
   constructor(db: LocalDatabase) { this.db = db; }
   async list() { return (await this.db.snapshot()).activities.filter(item => !item.deletedAt); }
   async active() { return (await this.list()).find(item => item.status !== 'completed'); }
-  create(id: string, kind: 'walk' | 'run', backgroundEnabled = false, now = Date.now(), tripId = '') {
+  create(id: string, kind: 'walk' | 'run', backgroundEnabled = false, now = Date.now(), tripId = '', pokemonId?: number) {
     return this.db.mutate(data => {
       ensure(!data.activities.some(item => !item.deletedAt && item.status !== 'completed'), 'Finish the active workout first.');
       ensure(!tripId || data.trips.some(item => item.id === tripId && !item.deletedAt), 'Choose an existing trip.');
-      const activity = { ...moduleDefaults('activities'), ...newEntity(id), name: kind === 'walk' ? 'Walk' : 'Run', kind, date: dateOnly(new Date(now)), source: 'gps', status: 'paused', backgroundEnabled, tripId } as FitnessActivity;
+      const activity = { ...moduleDefaults('activities'), ...newEntity(id), name: kind === 'walk' ? 'Walk' : 'Run', kind, date: dateOnly(new Date(now)), source: 'gps', status: 'paused', backgroundEnabled, tripId, ...(pokemonId === undefined ? {} : { pokemonId }) } as FitnessActivity;
       data.activities.push(activity);
       return activity;
     });

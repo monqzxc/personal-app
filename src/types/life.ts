@@ -23,6 +23,7 @@ export interface FitnessActivity extends Entity {
   peopleIds: string[]; name: string; kind: 'walk' | 'run'; date: DateOnly; durationMinutes: number; distanceKm: number;
   tripId: string; taskId: string; notes: string; source: 'manual' | 'gps'; status: 'recording' | 'paused' | 'completed';
   elapsedMs: number; resumedAt: number; segment: number; route: RoutePoint[]; trackingError: string; backgroundEnabled: boolean;
+  pokemonId?: number;
 }
 export interface Debt extends Entity {
   direction: 'lent' | 'borrowed'; collectionId: string; name: string; personId: string; amount: number; currency: string; date: DateOnly; dueDate: DateOnly | null;

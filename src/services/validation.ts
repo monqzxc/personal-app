@@ -155,6 +155,10 @@ export function validateModule<K extends ModuleKey>(key: K, value: unknown): ass
   if (key === 'accounts') ensure(!Object.keys(value).some(name => /password|secret|token|recoveryCode/i.test(name)), 'Passwords, tokens, and recovery codes must not be stored in the account directory.');
   if (key === 'activities') {
     if (value.taskId) uuid(value.taskId);
+    if (value.pokemonId !== undefined) {
+      ensure(typeof value.pokemonId === 'number' && Number.isInteger(value.pokemonId) && value.pokemonId >= 1 && value.pokemonId <= 151, 'Choose a Generation 1 Pokémon (1–151).');
+      ensure(value.source === 'gps' && value.kind === 'run', 'Pokémon companions are only available for GPS runs.');
+    }
     ensure(Number.isInteger(value.segment), 'Invalid route segment.');
     ensure((value.status === 'recording') === (Number(value.resumedAt) > 0), 'Invalid recording timer.');
     if (value.source === 'manual') ensure(value.status === 'completed' && (value.route as unknown[]).length === 0 && value.elapsedMs === 0 && value.resumedAt === 0 && value.segment === 0 && Number(value.durationMinutes) > 0, 'Manual activities need a positive duration and no GPS data.');

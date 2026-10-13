@@ -10,6 +10,18 @@ Open **More → Fitness**. Choose Walk or Run, then **Start**. The active workou
 
 History supports search and walk/run filters. Weekly totals include completed activities from Monday through today. GPS measurements are read-only after saving; names, notes, and links remain editable. Manual measurements remain editable.
 
+### Pokémon running partners
+
+Choose **Run → Change Pokémon** before starting to pick any of the original 151 Pokémon by name or Pokédex number. Charmander is the initial suggestion; the most recently used partner is suggested when you return. You can also choose **Run without a Pokémon**. The chosen partner stays attached to that run through pause/resume, recovery, and finishing.
+
+Every kilometre of GPS running with a partner earns **1,000 XP**. **Each new run starts fresh**, with zero XP and the selected Pokémon at level 1. Only distance recorded in that run advances its evolution. One level is earned per kilometre, capped at 100; XP continues beyond the level cap. Walks, manual logs, and runs without a partner do not award Pokémon XP. Pausing or reopening an unfinished run preserves its progress.
+
+For a run starting with Charmander, milestones are **5 km → Charmeleon**, **10 km → Charizard**, **20 km → Mega Charizard X**, and **40 km → Gigantamax Charizard** within that run. These are running milestones, not the games' evolution requirements. Other paths use their remaining Generation 1 evolutions at 5 km and 10 km, with Mega at 20 km and Gigantamax at 40 km where supported. The card previews the actual path before starting. Branches use Vaporeon for Eevee and Mega X for Charizard/Mewtwo. Species without another supported evolution continue earning XP.
+
+The active card shows the current form, XP, level, distance to the next evolution, and an evolution message when a milestone is crossed while Fitness is open. History keeps each run's final Pokémon form and earned XP. Progress is derived from the run's saved distance, so refreshing never awards XP twice and another run cannot change a completed run's result. JSON backups include the partner assignments; older records continue to work without a Pokémon.
+
+Pixel artwork uses the supplied [Pokémon Showdown Generation 5 sprites](https://play.pokemonshowdown.com/sprites/gen5/). Images need an internet connection to load; if artwork fails, a placeholder appears and GPS/XP tracking still works. No new native module is required. Test sprite loading and an actual GPS run on the phone before relying on the feature.
+
 ## Install a standalone app
 
 The current release is **0.2.4**, adding profile photos and a safer Quick Expense return flow. Build/install it once because photo selection and resizing need native support. It retains the JSON backup support introduced in 0.2.3 and manual App updates introduced in 0.2.2. See [JSON backups](data-backup.md) and [app updates](app-updates.md). The included Finance changes use database schema 6, so export a backup before installing over an older release. See [Finance capture and collections](finance-capture-and-collections.md).
@@ -28,7 +40,7 @@ npx.cmd eas-cli@latest login
 
 This workspace is already linked to the existing Expo project. For a rebuild, keep that project, the `com.suppm.daywell` identifiers, and the existing signing credentials. No `eas init` or configuration replacement is needed. If dependencies are already installed and you are logged in, go straight to the build command below.
 
-The current source includes the updated dashboard and liquid purple navigation bar. TypeScript, all 97 tests, and Android/iOS/web bundle exports have passed. See the [mobile dashboard guide](mobile-dashboard.md) for the remaining phone checks. The current native runtime is 0.2.4 for profile photo support. Export a JSON backup before installing, since the included Finance changes migrate older data to schema 6.
+The current source includes the updated dashboard and liquid purple navigation bar. TypeScript, all 122 tests, and Android/iOS/web bundle exports have passed. See the [mobile dashboard guide](mobile-dashboard.md) for the remaining phone checks. The current native runtime is 0.2.4 for profile photo support. Export a JSON backup before installing, since the included Finance changes migrate older data to schema 6.
 
 ### Android
 
@@ -86,7 +98,7 @@ Routes and records use the device's unencrypted local storage. Street-map provid
 
 ## Verification and device checklist
 
-`npm.cmd run check` runs strict TypeScript and 97 tests, including fitness distance/filtering, pause/resume timing, interrupted recording, concurrent starts, failed writes, route deletion, manual logging, weekly totals, and fitness migration, plus schema-6 Finance migration and collection assignment. Web, Android, and iOS JavaScript exports pass. Native configuration includes location/background permissions. Exports are not signed APK/IPA builds or physical-device tests.
+`npm.cmd run check` runs strict TypeScript and 122 tests, including Pokémon evolution thresholds, fresh progress each run, partner persistence and backup restore, fitness distance/filtering, pause/resume timing, interrupted recording, concurrent starts, failed writes, route deletion, manual logging, weekly totals, and fitness migration, plus schema-6 Finance migration and collection assignment. Web, Android, and iOS JavaScript exports pass. Native configuration includes location/background permissions. Exports are not signed APK/IPA builds or physical-device tests.
 
 Before relying on the tracker:
 

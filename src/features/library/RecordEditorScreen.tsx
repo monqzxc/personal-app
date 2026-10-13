@@ -65,7 +65,7 @@ function Editor({ module, params }: { module: ModuleKey; params: Params }) {
   const borrowed = module === 'debts' ? draft.direction === 'borrowed' : repaymentDebt?.direction === 'borrowed';
   const hasRepayments = module === 'debts' && existing && data.repayments.some(item => item.debtId === existing.id);
   const fields = modules[module].fields.filter(field => !field.hidden
-    && !(module === 'activities' && draft.source === 'gps' && ['durationMinutes', 'distanceKm'].includes(field.key))
+    && !(module === 'activities' && draft.source === 'gps' && ['kind', 'durationMinutes', 'distanceKm'].includes(field.key))
     && !(module === 'debts' && field.key === 'walletId' && draft.existingDebt)
     && !(module === 'debts' && field.key === 'direction' && hasRepayments)
     && !(module === 'transactions' && field.key === 'toWalletId' && draft.type !== 'transfer')

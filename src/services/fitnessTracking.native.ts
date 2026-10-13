@@ -70,10 +70,10 @@ AppState.addEventListener('change', state => {
   });
 });
 export const fitnessTracking = {
-  start: (kind: 'walk' | 'run', background: boolean, tripId = '') => exclusive(async () => {
+  start: (kind: 'walk' | 'run', background: boolean, tripId = '', pokemonId?: number) => exclusive(async () => {
     if (await fitnessRepository.active()) throw new Error('Finish your active workout first.');
     await permissions(background);
-    const activity = await fitnessRepository.create(createId(), kind, background, Date.now(), tripId);
+    const activity = await fitnessRepository.create(createId(), kind, background, Date.now(), tripId, pokemonId);
     await begin(activity);
   }),
   resume: (id: string) => exclusive(async () => {

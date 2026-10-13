@@ -9,6 +9,7 @@ import { useAppStore } from '../../stores/useAppStore';
 import { useToday } from '../../hooks/useToday';
 import { dateOnly } from '../../utils/dates';
 import { durationText, paceText } from '../fitness/tracking';
+import { pokemonProgress } from '../fitness/pokemon';
 
 export function RecordCard({ module, record }: { module: ModuleKey; record: ModuleRecord }) {
   const { colors } = useTheme();
@@ -25,6 +26,7 @@ export function RecordCard({ module, record }: { module: ModuleKey; record: Modu
   return <Pressable accessibilityRole="button" accessibilityLabel={`Open ${recordTitle(module, record)}`} onPress={() => router.push({ pathname: '/record', params: { module, id: record.id } })}>
     <Card><View style={layout.row}><View style={{ flex: 1, gap: 8 }}><Label bold>{recordTitle(module, record)}</Label>
       {module === 'activities' && <Label muted>{String(values.kind)} · {durationText(Number(values.durationMinutes))} · {Number(values.distanceKm).toFixed(2)} km · {paceText(Number(values.durationMinutes), Number(values.distanceKm))}</Label>}
+      {module === 'activities' && typeof values.pokemonId === 'number' && <Badge title={`${pokemonProgress(values.pokemonId, Number(values.distanceKm))?.current.name} · ${Math.floor(Number(values.distanceKm) * 1000).toLocaleString()} XP`} tone="primary" />}
       {module === 'people' && <>{[...new Set(data.debts.filter(item => item.personId === record.id).map(item => item.currency))].map(currency => <View key={currency}><Label bold>They owe me: {money(owedTotal(data, currency, record.id, today, 'lent'), currency)}</Label><Label>I owe them: {money(owedTotal(data, currency, record.id, today, 'borrowed'), currency)}</Label></View>)}{!data.debts.some(item => item.personId === record.id) && <Label muted>No money owed recorded</Label>}</>}
       {module === 'debts' && <><Label muted>{data.people.find(item => item.id === values.personId)?.name}</Label><Badge title={values.direction === 'borrowed' ? 'I owe them' : 'They owe me'} /><Badge title={debtProgress(record as Debt, data.repayments, today).status} /><Label bold>{money(debtProgress(record as Debt, data.repayments, today).remaining, String(values.currency))} still owed</Label></>}
       {module === 'repayments' && <><Label muted>{repaymentDebt?.direction === 'borrowed' ? 'Paid to' : 'Received from'} {data.people.find(item => item.id === repaymentDebt?.personId)?.name ?? 'Person unavailable'}</Label><Label muted>{repaymentDebt?.name} · {walletName(values.walletId)}</Label></>}

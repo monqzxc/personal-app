@@ -42,9 +42,12 @@ export class LifeService {
     if (key === 'activities') {
       if (existing && 'source' in existing && existing.source === 'gps') {
         ensure(existing.status === 'completed', 'Finish this workout before editing it.');
-        for (const field of ['source', 'status', 'elapsedMs', 'resumedAt', 'segment', 'route', 'durationMinutes', 'distanceKm', 'trackingError', 'backgroundEnabled']) values[field] = (existing as unknown as Record<string, unknown>)[field];
+        for (const field of ['kind', 'pokemonId', 'source', 'status', 'elapsedMs', 'resumedAt', 'segment', 'route', 'durationMinutes', 'distanceKm', 'trackingError', 'backgroundEnabled']) values[field] = (existing as unknown as Record<string, unknown>)[field];
         Object.assign(record, values);
-      } else ensure(values.source === 'manual', 'Start GPS activities from Fitness.');
+      } else {
+        ensure(values.source === 'manual', 'Start GPS activities from Fitness.');
+        ensure(input.pokemonId === undefined, 'Choose a Pokémon when starting a GPS run.');
+      }
     }
     validateModule(key, record);
     if (key === 'debts' || key === 'repayments') ensure(String(values.date) <= dateOnly(), 'Record lending, borrowing, and repayments only after they happen. Choose today or an earlier date.');

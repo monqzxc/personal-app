@@ -9,6 +9,7 @@ import { LifeService } from '../src/services/lifeService.ts';
 import { moduleDefaults } from '../src/features/library/catalog.ts';
 import { appendPosition, distanceMeters, durationText, elapsedMilliseconds, paceText, routeSegments, weeklyFitness } from '../src/features/fitness/tracking.ts';
 import { validateDatabase } from '../src/services/validation.ts';
+import { BackupService, encodeBackup, parseBackup } from '../src/services/backupService.ts';
 
 const start = Date.parse('2026-10-05T00:00:00.000Z');
 class MemoryStorage implements KeyValueStorage {
@@ -147,4 +148,82 @@ test('schema-4 upgrade preserves original records and backs up before adding act
   assert.equal(storage.values.get(`${DATABASE_KEY}.backup.v4`), raw);
   const activity = await life.save('activities', { ...moduleDefaults('activities'), name: 'Walk', durationMinutes: 10 });
   assert.throws(() => validateDatabase({ ...migrated, activities: [{ ...activity, route: [{ latitude: 200 }] }] }), /GPS/);
+});
+
+test('a run companion survives GPS updates, pauses, restart recovery, finishing and backup restore', async () => {
+  const { fitness, life, db, storage } = setup();
+  const trip = await life.save('trips', { ...moduleDefaults('trips'), title: 'Cebu', destination: 'Cebu' });
+  const activity = await fitness.create(randomUUID(), 'run', false, start, trip.id, 4);
+  assert.equal(activity.pokemonId, 4);
+  assert.equal(activity.tripId, trip.id);
+  assert.equal((await fitness.transition(activity.id, 'resume', start)).pokemonId, 4);
+  assert.equal((await fitness.append([point(0), point(10, 123.9001)], start + 10000))?.pokemonId, 4);
+  assert.equal((await fitness.transition(activity.id, 'pause', start + 60000)).pokemonId, 4);
+  await fitness.transition(activity.id, 'resume', start + 120000);
+  await fitness.append([point(121, 123.9002), point(131, 123.9003)], start + 131000);
+  const reloaded = new LocalFitnessRepository(new LocalDatabase(storage));
+  assert.equal((await reloaded.active())?.pokemonId, 4);
+  assert.equal((await reloaded.transition(activity.id, 'recover', start + 3600000, 'Interrupted')).pokemonId, 4);
+  const finished = await reloaded.transition(activity.id, 'finish', start + 3600000);
+  assert.equal(finished.pokemonId, 4);
+  assert.ok(finished.distanceKm > 0);
+  const snapshot = await db.snapshot();
+  assert.deepEqual(parseBackup(encodeBackup(snapshot)).data.activities[0], finished);
+  const destination = setup();
+  const backup = new BackupService(destination.db);
+  await backup.restore(await backup.preview(encodeBackup(snapshot)));
+  assert.deepEqual((await new LocalFitnessRepository(new LocalDatabase(destination.storage)).list())[0], finished);
+});
+
+test('companion IDs are validated when creating runs, reading storage and importing backups', async () => {
+  const { fitness, db, storage } = setup();
+  for (const pokemonId of [0, -1, 152, 1.5, NaN, Infinity, '4', null, true, {}]) {
+    await assert.rejects(fitness.create(randomUUID(), 'run', false, start, '', pokemonId as number), /Generation 1/);
+  }
+  assert.equal((await fitness.list()).length, 0);
+  await assert.rejects(fitness.create(randomUUID(), 'walk', false, start, '', 4), /GPS runs/);
+  for (const pokemonId of [1, 151]) {
+    const activity = await fitness.create(randomUUID(), 'run', false, start, '', pokemonId);
+    await fitness.transition(activity.id, 'finish', start);
+  }
+  const snapshot = await db.snapshot();
+  const original = storage.values.get(DATABASE_KEY)!;
+  for (const patch of [{ pokemonId: 152 }, { pokemonId: '4' }, { pokemonId: null }, { kind: 'walk' }, { source: 'manual', durationMinutes: 1 }]) {
+    const invalid = { ...snapshot, activities: [{ ...snapshot.activities[0], ...patch }] };
+    assert.throws(() => validateDatabase(invalid), /Generation 1|GPS runs/);
+    assert.throws(() => parseBackup(encodeBackup(invalid as typeof snapshot)), /Generation 1|GPS runs/);
+    storage.values.set(DATABASE_KEY, JSON.stringify(invalid));
+    await assert.rejects(new LocalDatabase(storage).snapshot(), /Generation 1|GPS runs/);
+  }
+  storage.values.set(DATABASE_KEY, original);
+  const legacy = await fitness.create(randomUUID(), 'run', false, start);
+  await fitness.transition(legacy.id, 'finish', start);
+  const restored = parseBackup(encodeBackup(await db.snapshot()));
+  assert.equal(restored.data.activities.at(-1)?.pokemonId, undefined);
+});
+
+test('manual saves cannot add companions, and GPS edits preserve the original companion and activity kind', async () => {
+  const { fitness, life, storage } = setup();
+  const input = { ...moduleDefaults('activities'), name: 'Manual run', kind: 'run', durationMinutes: 30, distanceKm: 5 };
+  await assert.rejects(life.save('activities', { ...input, pokemonId: 4 }), /starting a GPS run/);
+  const manual = await life.save('activities', input);
+  await assert.rejects(life.save('activities', { ...manual, pokemonId: 4 }, manual.id), /starting a GPS run/);
+  const activity = await fitness.create(randomUUID(), 'run', false, start, '', 4);
+  const finished = await fitness.transition(activity.id, 'finish', start);
+  const edited = await life.save('activities', { ...finished, name: 'Morning run', kind: 'walk', pokemonId: 25, source: 'manual', distanceKm: 100 }, activity.id);
+  assert.equal(edited.name, 'Morning run');
+  assert.equal(edited.kind, 'run');
+  assert.equal(edited.source, 'gps');
+  assert.equal(edited.pokemonId, 4);
+  assert.equal(edited.distanceKm, finished.distanceKm);
+  const { pokemonId: _pokemonId, kind: _kind, ...withoutIdentity } = edited;
+  const unchanged = await life.save('activities', { ...withoutIdentity, notes: 'Good run' }, activity.id);
+  assert.equal(unchanged.pokemonId, 4);
+  assert.equal(unchanged.kind, 'run');
+  assert.deepEqual((await new LocalFitnessRepository(new LocalDatabase(storage)).list()).find(item => item.id === activity.id), unchanged);
+  const legacy = await fitness.create(randomUUID(), 'walk', false, start);
+  const legacyFinished = await fitness.transition(legacy.id, 'finish', start);
+  const legacyEdited = await life.save('activities', { ...legacyFinished, kind: 'run', pokemonId: 4 }, legacy.id);
+  assert.equal(legacyEdited.kind, 'walk');
+  assert.equal(legacyEdited.pokemonId, undefined);
 });
