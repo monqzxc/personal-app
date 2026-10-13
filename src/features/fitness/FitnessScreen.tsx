@@ -34,7 +34,7 @@ export default function FitnessScreen({ tripId, initialKind = 'walk' }: { tripId
   useEffect(() => {
     const milestoneKm = companion?.current.distanceKm ?? 0;
     if (active && companion && lastForm.current.activityId === active.id && milestoneKm > lastForm.current.milestoneKm) {
-      useToastStore.getState().showToast(`Your partner evolved into ${companion.current.name}!`);
+      useToastStore.getState().showToast(milestoneKm === 5 ? `Your egg hatched into ${companion.current.name}!` : `Your partner evolved into ${companion.current.name}!`);
     }
     lastForm.current = { activityId: active?.id ?? '', milestoneKm };
   }, [active?.id, companion?.current.slug]);
@@ -78,7 +78,8 @@ export default function FitnessScreen({ tripId, initialKind = 'walk' }: { tripId
           if (!finished.pokemonId) return 'Activity saved.';
           const final = pokemonProgress(finished.pokemonId, finished.distanceKm);
           const evolved = final && final.current.distanceKm > (companion?.current.distanceKm ?? 0);
-          return `Run saved! ${Math.floor(finished.distanceKm * 1000).toLocaleString()} XP earned. ${evolved ? `Your partner evolved into ${final.current.name}!` : `Finished with ${final?.current.name ?? 'your partner'}.`}`;
+          const result = evolved ? final.current.distanceKm === 5 ? `Your egg hatched into ${final.current.name}!` : `Your partner evolved into ${final.current.name}!` : `Finished with ${final?.current.name ?? 'your partner'}.`;
+          return `Run saved! ${Math.floor(finished.distanceKm * 1000).toLocaleString()} XP earned. ${result}`;
         });
       }} /></View>
       {active.pokemonId && <PokemonCompanion pokemonId={active.pokemonId} distanceKm={active.distanceKm} />}
@@ -93,7 +94,7 @@ export default function FitnessScreen({ tripId, initialKind = 'walk' }: { tripId
       </>}
       <View style={layout.row}><View style={{ flex: 1 }}><Label>Keep tracking with the screen locked</Label></View><Switch trackColor={{ false: colors.border, true: colors.primary }} thumbColor={colors.surface} accessibilityLabel="Track with screen locked" value={background} onValueChange={setBackground} /></View>
       <Label muted size={12}>{background ? 'Requires an installed build and Always / Allow all the time location permission. Your phone may open settings to grant access. Tracking runs only until you pause or finish.' : 'Screen-only mode pauses when the app goes into the background, including screen lock.'} Routes stay on this device. Street-map providers receive requests for the area you view.</Label>
-      <Button title={`Start ${kind}${kind === 'run' && selectedCompanion ? ` with ${selectedCompanion.current.name}` : ''}`} busy={busy} disabled={Platform.OS === 'web'} onPress={() => { void run(() => fitnessTracking.start(kind, background, tripId, kind === 'run' ? pokemonId : undefined), 'Activity started.'); }} />
+      <Button title={`Start ${kind}${kind === 'run' && selectedCompanion ? ` with ${selectedCompanion.pokemon.name} egg` : ''}`} busy={busy} disabled={Platform.OS === 'web'} onPress={() => { void run(() => fitnessTracking.start(kind, background, tripId, kind === 'run' ? pokemonId : undefined), 'Activity started.'); }} />
       {Platform.OS === 'web' && <Label muted>Live GPS requires the Android or iPhone app. Manual logging and saved route outlines work here.</Label>}
     </Card>}
     <SectionHeader title="Activity history" /><Field label="Search activities" value={search} onChangeText={setSearch} placeholder="Name, notes, or date" /><Chips items={['All', 'walk', 'run']} value={filter} onChange={setFilter} />

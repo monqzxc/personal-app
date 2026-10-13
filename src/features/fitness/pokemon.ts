@@ -51,18 +51,18 @@ export function pokemonEvolutionPath(id: number): PokemonStage[] {
   const remaining = family ? family.slice(family.indexOf(id)) : [id];
   const stages = remaining.map((speciesId, index) => {
     const pokemon = getPokemon(speciesId)!;
-    return { name: pokemon.name, slug: pokemon.slug, distanceKm: index * 5 };
+    return { name: pokemon.name, slug: pokemon.slug, distanceKm: index === 0 ? 5 : index * 10 };
   });
   const finalId = remaining.at(-1)!;
   const final = getPokemon(finalId)!;
   if (megaIds.has(finalId)) {
     const variant = finalId === 6 || finalId === 150 ? 'x' : '';
-    stages.push({ name: `Mega ${final.name}${variant ? ' X' : ''}`, slug: `${final.slug}-mega${variant}`, distanceKm: 20 });
+    stages.push({ name: `Mega ${final.name}${variant ? ' X' : ''}`, slug: `${final.slug}-mega${variant}`, distanceKm: stages.length * 10 });
   }
   if (gigantamaxIds.has(finalId)) {
-    stages.push({ name: `Gigantamax ${final.name}`, slug: `${final.slug}-gmax`, distanceKm: 40 });
+    stages.push({ name: `Gigantamax ${final.name}`, slug: `${final.slug}-gmax`, distanceKm: stages.length * 10 });
   }
-  return stages;
+  return [{ name: 'Egg', slug: 'egg', distanceKm: 0 }, ...stages];
 }
 
 export function pokemonProgress(id: number, distanceKm: number) {
